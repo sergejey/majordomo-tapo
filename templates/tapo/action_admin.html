@@ -1,0 +1,94 @@
+[#if OK_MSG#]
+<div class="alert alert-success">[#OK_MSG#]</div>
+[#endif OK_MSG#]
+[#if ERR_MSG#]
+<div class="alert alert-danger">[#ERR_MSG#]</div>
+[#endif ERR_MSG#]
+
+<p>
+    <a href="#" onClick="$('#api_settings').toggle();return false;" class="btn btn-default"><#LANG_SETUP#></a>
+    <a href="?mode=refresh" class="btn btn-default"><i class="glyphicon glyphicon-refresh"></i> <#LANG_REFRESH#></a>
+</p>
+<div style="display:none" id='api_settings'>
+    <form action="?" method="post" enctype="multipart/form-data" name="frmEdit" class="form">
+        <fieldset>
+            <div class="form-group">
+                <label class="control-label">
+                    Tapo <#LANG_USERNAME#> (e-mail):
+                </label>
+                <input type="text" name="api_username" value="[#API_USERNAME#]" class="form-control">
+            </div>
+
+            <div class="form-group">
+                <label class="control-label">
+                    Tapo <#LANG_PASSWORD#>:
+                </label>
+                <input type="password" name="api_password" value="[#API_PASSWORD#]" class="form-control">
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" name="subm" value="Submit" class="btn btn-primary"><#LANG_UPDATE#></button>
+                <input type="hidden" name="view_mode" value="update_settings">
+                <input type="hidden" name="mode" value="update">
+            </div>
+        </fieldset>
+    </form>
+
+</div>
+&nbsp;
+
+ <!-- action usual -->
+ [#if DATA_SOURCE="tapodevices" || DATA_SOURCE=""#]
+ <!-- table tapodevices search -->
+ [#if VIEW_MODE="search_tapodevices" || VIEW_MODE=""#]
+  [#inc tapodevices_search_admin.html#]
+ [#endif VIEW_MODE#]
+ <!-- / table tapodevices search -->
+ <!-- table tapodevices edit -->
+ [#if VIEW_MODE="edit_tapodevices"#]
+   [#if ID!=""#]
+   [#if TITLE!=""#]<h4>[#TITLE#]</h4>[#endif TITLE#]
+<ul class="nav nav-tabs">
+  <li[#if TAB=""#] class="active"[#endif#]>
+   <a href="?data_source=<#DATA_SOURCE#>&view_mode=<#VIEW_MODE#>&id=<#ID#>&tab="><#LANG_GENERAL#></a>
+  </li>
+  <li[#if TAB="data"#] class="active"[#endif#]>
+   <a href="?data_source=<#DATA_SOURCE#>&view_mode=<#VIEW_MODE#>&id=<#ID#>&tab=data">&#060#LANG_DATA#&#062</a>
+  </li>
+</ul>
+&nbsp;<br/>
+   [#endif ID#]
+   [#if TAB=""#]
+    [#inc tapodevices_edit_default.html#]
+   [#endif TAB#]
+   [#if TAB="data"#]
+    [#inc tapodevices_edit_data.html#]
+   [#endif TAB#]
+ [#endif VIEW_MODE#]
+ <!-- / table tapodevices edit -->
+ <!-- table tapodevices view --> 
+ [#if VIEW_MODE="view_tapodevices"#]
+   [#if TAB=""#]
+    [#inc tapodevices_view_default.html#]
+   [#endif TAB#]
+ [#endif VIEW_MODE#]
+ <!-- / table tapodevices view -->
+ [#endif DATA_SOURCE#]
+ <!-- action usual -->
+ [#if DATA_SOURCE="tapoproperties"#]
+ <!-- table tapoproperties search -->
+ [#if VIEW_MODE="search_tapoproperties" || VIEW_MODE=""#]
+  [#inc tapoproperties_search_admin.html#]
+ [#endif VIEW_MODE#]
+ <!-- / table tapoproperties search -->
+ <!-- table tapoproperties edit -->
+ [#if VIEW_MODE="edit_tapoproperties"#]
+   [#inc tapoproperties_edit.html#]
+ [#endif VIEW_MODE#]
+ <!-- / table tapoproperties edit -->
+ <!-- table tapoproperties view --> 
+ [#if VIEW_MODE="view_tapoproperties"#]
+   [#inc tapoproperties_view.html#]
+ [#endif VIEW_MODE#]
+ <!-- / table tapoproperties view -->
+ [#endif DATA_SOURCE#]
