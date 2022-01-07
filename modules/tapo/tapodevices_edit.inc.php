@@ -83,14 +83,13 @@ if ($this->tab == 'data') {
     for ($i = 0; $i < $total; $i++) {
         if ($properties[$i]['ID'] == $new_id) continue;
         if ($this->mode == 'update') {
+            $old_linked_object = $properties[$i]['LINKED_OBJECT'];
+            $old_linked_property = $properties[$i]['LINKED_PROPERTY'];
             global ${'linked_object' . $properties[$i]['ID']};
             $properties[$i]['LINKED_OBJECT'] = trim(${'linked_object' . $properties[$i]['ID']});
             global ${'linked_property' . $properties[$i]['ID']};
             $properties[$i]['LINKED_PROPERTY'] = trim(${'linked_property' . $properties[$i]['ID']});
             SQLUpdate('tapoproperties', $properties[$i]);
-
-            $old_linked_object = $properties[$i]['LINKED_OBJECT'];
-            $old_linked_property = $properties[$i]['LINKED_PROPERTY'];
             if ($old_linked_object && $old_linked_object != $properties[$i]['LINKED_OBJECT'] && $old_linked_property && $old_linked_property != $properties[$i]['LINKED_PROPERTY']) {
                 removeLinkedProperty($old_linked_object, $old_linked_property, $this->name);
             }
