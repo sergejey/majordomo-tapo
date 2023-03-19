@@ -34,7 +34,24 @@ if ($res[0]['ID']) {
     //paging($res, 100, $out); // search result paging
     $total = count($res);
     for ($i = 0; $i < $total; $i++) {
-        // some action for every record if required
+        $commands = SQLSelect("SELECT * FROM tapoproperties WHERE DEVICE_ID=" . $res[$i]['ID']);
+        $total_c = count($commands);
+        for ($ic = 0; $ic < $total_c; $ic++) {
+            if ($commands[$ic]['LINKED_OBJECT'] != '') {
+                $device = SQLSelectOne("SELECT ID, TITLE FROM devices WHERE LINKED_OBJECT='" . DBSafe($commands[$ic]['LINKED_OBJECT']) . "'");
+                if ($device['TITLE']) {
+                    $res[$i]['COMMANDS'] .= ' - <a href="' . ROOTHTML . 'panel/devices/' . $device['ID'] . '.html" target=_blank>' . $device['TITLE'] . '</a>';
+                } else {
+                    $res[$i]['COMMANDS'] .= ' (' . $commands[$ic]['LINKED_OBJECT'];
+                    if ($commands[$ic]['LINKED_PROPERTY'] != '') {
+                        $res[$i]['COMMANDS'] .= '.' . $commands[$ic]['LINKED_PROPERTY'];
+                    } elseif ($commands[$ic]['LINKED_METHOD'] != '') {
+                        $res[$i]['COMMANDS'] .= '.' . $commands[$ic]['LINKED_METHOD'];
+                    }
+                    $res[$i]['COMMANDS'] .= ')';
+                }
+            }
+        }
     }
     $out['RESULT'] = $res;
 }
