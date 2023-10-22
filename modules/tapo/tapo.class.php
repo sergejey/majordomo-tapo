@@ -151,7 +151,7 @@ class tapo extends module
             $this->redirect("?ok_msg=OK");
         }
 
-        if ($this->mode=='refresh') {
+        if ($this->mode == 'refresh') {
             $this->refreshDevices();
             $this->redirect("?ok_msg=OK");
         }
@@ -186,69 +186,93 @@ class tapo extends module
         }
     }
 
-    function refreshDevices() {
+    function guidv4($data = null)
+    {
+        // Generate 16 bytes (128 bits) of random data or use the data passed into the function.
+        $data = $data ?? random_bytes(16);
+        assert(strlen($data) == 16);
+
+        // Set version to 0100
+        $data[6] = chr(ord($data[6]) & 0x0f | 0x40);
+        // Set bits 6-7 to 10
+        $data[8] = chr(ord($data[8]) & 0x3f | 0x80);
+
+        // Output the 36 character UUID.
+        return vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex($data), 4));
+    }
+
+
+    function refreshDevices()
+    {
 
         $this->getConfig();
         $url = 'https://eu-wap.tplinkcloud.com/';
 
+        $uuid = $this->guidv4();
+
         $payload = array(
-            'method'=>'login',
-            'params'=>array(
-                'appType'=>'Tapo_Ios',
-                'cloudUserName'=>$this->config['API_USERNAME'],
-                'cloudPassword'=>$this->config['API_PASSWORD'],
-                'terminalUUID'=>"0A950402-7224-46EB-A450-7362CDB902A2"
+            'method' => 'login',
+            'params' => array(
+                'appType' => 'Tapo_Ios',
+                'cloudUserName' => $this->config['API_USERNAME'],
+                'cloudPassword' => $this->config['API_PASSWORD'],
+                'terminalUUID' => $uuid// "0A950402-7224-46EB-A450-7362CDB902A2"
             )
         );
-        $ch = curl_init( $url );
+        $ch = curl_init($url);
         curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt( $ch, CURLOPT_POSTFIELDS, json_encode($payload) );
-        curl_setopt( $ch, CURLOPT_HTTPHEADER, array('Content-Type:application/json'));
-        curl_setopt( $ch, CURLOPT_RETURNTRANSFER, true );
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
+        curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type:application/json'));
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         $tmpfname = $this->cookieFilename;
         curl_setopt($ch, CURLOPT_COOKIEJAR, $tmpfname);
         curl_setopt($ch, CURLOPT_COOKIEFILE, $tmpfname);
         $result = curl_exec($ch);
         curl_close($ch);
 
-        $data = json_decode($result,true);
+        $data = json_decode($result, true);
+
         if (isset($data['error_code']) && !$data['error_code']) {
             $token = $data['result']['token'];
-            $url = 'https://eu-wap.tplinkcloud.com/?token='.$token;
+            $url = 'https://eu-wap.tplinkcloud.com/?token=' . $token;
 
             $payload = array(
-                'method'=>'getDeviceList'
+                'method' => 'getDeviceList'
             );
-            $ch = curl_init( $url );
+            $ch = curl_init($url);
             curl_setopt($ch, CURLOPT_POST, true);
-            curl_setopt( $ch, CURLOPT_POSTFIELDS, json_encode($payload) );
-            curl_setopt( $ch, CURLOPT_HTTPHEADER, array('Content-Type:application/json'));
-            curl_setopt( $ch, CURLOPT_RETURNTRANSFER, true );
+            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
+            curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type:application/json'));
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
             $tmpfname = $this->cookieFilename;
             curl_setopt($ch, CURLOPT_COOKIEJAR, $tmpfname);
             curl_setopt($ch, CURLOPT_COOKIEFILE, $tmpfname);
             $result = curl_exec($ch);
             curl_close($ch);
 
-            $data = json_decode($result,true);
+            $data = json_decode($result, true);
             if (isset($data['error_code']) && !$data['error_code']) {
                 $devices = $data['result']['deviceList'];
                 $total = count($devices);
-                for($i=0;$i<$total;$i++) {
+                for ($i = 0; $i < $total; $i++) {
                     $did = $devices[$i]['deviceId'];
                     if (!$did) continue;
-                    $device_rec=SQLSelectOne("SELECT ID FROM tapodevices WHERE DID='".$did."'");
+                    $device_rec = SQLSelectOne("SELECT ID FROM tapodevices WHERE DID='" . $did . "'");
                     if (!$device_rec['ID']) {
-                        $device_rec['DID']=$did;
-                        $device_rec['TITLE']=$did;
-                        $device_rec['MODEL']=$devices[$i]['deviceModel'];
-                        $device_rec['TYPE']=$devices[$i]['deviceType'];
-                        SQLInsert('tapodevices',$device_rec);
+                        $device_rec['DID'] = $did;
+                        $device_rec['TITLE'] = $did;
+                        $device_rec['MODEL'] = $devices[$i]['deviceModel'];
+                        $device_rec['VERSION_HW'] = $devices[$i]['deviceHwVer'];
+                        $device_rec['VERSION_FW'] = $devices[$i]['fwVer'];
+                        $device_rec['TYPE'] = $devices[$i]['deviceType'];
+                        SQLInsert('tapodevices', $device_rec);
                     } else {
+                        $device_rec['VERSION_HW'] = $devices[$i]['deviceHwVer'];
+                        $device_rec['VERSION_FW'] = $devices[$i]['fwVer'];
+                        SQLUpdate('tapodevices', $device_rec);
                         $this->refreshDevice($device_rec['ID']);
                     }
                 }
-                //dprint($devices);
             }
 
 
@@ -347,7 +371,8 @@ class tapo extends module
 
     }
 
-    function refreshDevice($device_id) {
+    function refreshDevice($device_id)
+    {
         $this->getConfig();
 
         $device = SQLSelectOne("SELECT * FROM tapodevices WHERE ID=" . (int)$device_id);
@@ -360,11 +385,11 @@ class tapo extends module
             if ($dev->login()) {
                 $data = $dev->getDeviceInfo();
                 if (is_array($data)) {
-                    $device['TYPE']=$data['type'];
-                    $device['DID']=$data['device_id'];
-                    $device['MODEL']=$data['model'];
-                    SQLUpdate('tapodevices',$device);
-                    $this->updateProperty($device['ID'],'status',(int)$data['device_on']);
+                    $device['TYPE'] = $data['type'];
+                    $device['DID'] = $data['device_id'];
+                    $device['MODEL'] = $data['model'];
+                    SQLUpdate('tapodevices', $device);
+                    $this->updateProperty($device['ID'], 'status', (int)$data['device_on']);
                     return true;
                 }
             }
@@ -388,6 +413,15 @@ class tapo extends module
                     return true;
                 }
             }
+        } else {
+            include_once DIR_MODULES . 'tapo/klapProtocol.class.php';
+            $dev = new TPLinkKlap($device['IP'], $this->config['API_USERNAME'], $this->config['API_PASSWORD']);
+            if ($dev->handshake()) {
+                if ($dev->turnOn()) {
+                    $this->updateProperty($device_id, 'status', 1);
+                    return true;
+                }
+            }
         }
         return false;
 
@@ -405,6 +439,15 @@ class tapo extends module
         $dev = new p100($device['IP'], $this->config['API_USERNAME'], $this->config['API_PASSWORD']);
         if ($dev->handshake()) {
             if ($dev->login()) {
+                if ($dev->turnOff()) {
+                    $this->updateProperty($device_id, 'status', 0);
+                    return true;
+                }
+            }
+        } else {
+            include_once DIR_MODULES . 'tapo/klapProtocol.class.php';
+            $dev = new TPLinkKlap($device['IP'], $this->config['API_USERNAME'], $this->config['API_PASSWORD']);
+            if ($dev->handshake()) {
                 if ($dev->turnOff()) {
                     $this->updateProperty($device_id, 'status', 0);
                     return true;
@@ -483,6 +526,8 @@ class tapo extends module
  tapodevices: DID varchar(255) NOT NULL DEFAULT ''
  tapodevices: TYPE varchar(255) NOT NULL DEFAULT ''
  tapodevices: MODEL varchar(255) NOT NULL DEFAULT ''
+ tapodevices: VERSION_HW varchar(255) NOT NULL DEFAULT ''
+ tapodevices: VERSION_FW varchar(255) NOT NULL DEFAULT ''
  
  tapoproperties: ID int(10) unsigned NOT NULL auto_increment
  tapoproperties: TITLE varchar(100) NOT NULL DEFAULT ''
